@@ -1,5 +1,10 @@
 import type Database from 'better-sqlite3';
-import type { Automation, AutomationStatus, AutomationType, RiskLevel } from '@ail/common';
+import type { Automation, AutomationStatus, AutomationType, RiskLevel, ExecutionTier } from '@ail/common';
+
+const SELECT_COLS = `id, pattern_id as patternId, type, name, description, script_content as scriptContent,
+  status, confidence, risk_level as riskLevel, execution_tier as executionTier,
+  template_params as templateParams, rule_config as ruleConfig,
+  created_at as createdAt, updated_at as updatedAt`;
 
 export class AutomationRepository {
   constructor(private db: Database.Database) {}
@@ -7,41 +12,48 @@ export class AutomationRepository {
   insert(auto: Omit<Automation, 'id' | 'createdAt' | 'updatedAt'>): number {
     const now = Date.now();
     const result = this.db.prepare(`
-      INSERT INTO automations (pattern_id, type, name, description, script_content, status, confidence, risk_level, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(auto.patternId, auto.type, auto.name, auto.description, auto.scriptContent, auto.status, auto.confidence, auto.riskLevel, now, now);
+      INSERT INTO automations (pattern_id, type, name, description, script_content, status, confidence, risk_level, execution_tier, template_params, rule_config, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      auto.patternId, auto.type, auto.name, auto.description, auto.scriptContent,
+      auto.status, auto.confidence, auto.riskLevel,
+      auto.executionTier ?? 1, auto.templateParams ?? null, auto.ruleConfig ?? null,
+      now, now
+    );
     return result.lastInsertRowid as number;
   }
 
   getById(id: number): Automation | undefined {
-    return this.db.prepare(`
-      SELECT id, pattern_id as patternId, type, name, description, script_content as scriptContent,
-             status, confidence, risk_level as riskLevel, created_at as createdAt, updated_at as updatedAt
-      FROM automations WHERE id = ?
-    `).get(id) as Automation | undefined;
+    return this.db.prepare(`SELECT ${SELECT_COLS} FROM automations WHERE id = ?`).get(id) as Automation | undefined;
   }
 
-  getAll(filters?: { status?: AutomationStatus; type?: AutomationType; riskLevel?: RiskLevel }): Automation[] {
-    let sql = `SELECT id, pattern_id as patternId, type, name, description, script_content as scriptContent,
-               status, confidence, risk_level as riskLevel, created_at as createdAt, updated_at as updatedAt
-               FROM automations WHERE 1=1`;
+  getAll(filters?: { status?: AutomationStatus; type?: AutomationType; riskLevel?: RiskLevel; tier?: ExecutionTier }): Automation[] {
+    let sql = `SELECT ${SELECT_COLS} FROM automations WHERE 1=1`;
     const params: unknown[] = [];
     if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
     if (filters?.type) { sql += ' AND type = ?'; params.push(filters.type); }
     if (filters?.riskLevel) { sql += ' AND risk_level = ?'; params.push(filters.riskLevel); }
+    if (filters?.tier) { sql += ' AND execution_tier = ?'; params.push(filters.tier); }
     sql += ' ORDER BY updated_at DESC';
     return this.db.prepare(sql).all(...params) as Automation[];
   }
 
   getByPatternId(patternId: number): Automation[] {
-    return this.db.prepare(`
-      SELECT id, pattern_id as patternId, type, name, description, script_content as scriptContent,
-             status, confidence, risk_level as riskLevel, created_at as createdAt, updated_at as updatedAt
-      FROM automations WHERE pattern_id = ?
-    `).all(patternId) as Automation[];
+    return this.db.prepare(`SELECT ${SELECT_COLS} FROM automations WHERE pattern_id = ?`).all(patternId) as Automation[];
   }
 
-  update(id: number, fields: Partial<Pick<Automation, 'status' | 'scriptContent' | 'confidence' | 'riskLevel' | 'name' | 'description'>>): void {
+  getByTier(tier: ExecutionTier): Automation[] {
+    return this.db.prepare(`SELECT ${SELECT_COLS} FROM automations WHERE execution_tier = ? ORDER BY updated_at DESC`).all(tier) as Automation[];
+  }
+
+  getTierCounts(): Record<number, number> {
+    const rows = this.db.prepare(
+      'SELECT execution_tier as tier, COUNT(*) as count FROM automations GROUP BY execution_tier'
+    ).all() as Array<{ tier: number; count: number }>;
+    return Object.fromEntries(rows.map(r => [r.tier, r.count]));
+  }
+
+  update(id: number, fields: Partial<Pick<Automation, 'status' | 'scriptContent' | 'confidence' | 'riskLevel' | 'name' | 'description' | 'executionTier' | 'templateParams' | 'ruleConfig'>>): void {
     const sets: string[] = [];
     const params: unknown[] = [];
     if (fields.status !== undefined) { sets.push('status = ?'); params.push(fields.status); }
@@ -50,6 +62,9 @@ export class AutomationRepository {
     if (fields.riskLevel !== undefined) { sets.push('risk_level = ?'); params.push(fields.riskLevel); }
     if (fields.name !== undefined) { sets.push('name = ?'); params.push(fields.name); }
     if (fields.description !== undefined) { sets.push('description = ?'); params.push(fields.description); }
+    if (fields.executionTier !== undefined) { sets.push('execution_tier = ?'); params.push(fields.executionTier); }
+    if (fields.templateParams !== undefined) { sets.push('template_params = ?'); params.push(fields.templateParams); }
+    if (fields.ruleConfig !== undefined) { sets.push('rule_config = ?'); params.push(fields.ruleConfig); }
     if (sets.length === 0) return;
     sets.push('updated_at = ?');
     params.push(Date.now());

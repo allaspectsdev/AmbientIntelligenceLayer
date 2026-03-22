@@ -16,6 +16,7 @@ export { FileEventRepository } from './repositories/file-event.repo.js';
 // Automation repositories
 export { AutomationRepository } from './repositories/automation.repo.js';
 export { AutomationExecutionRepository } from './repositories/automation-execution.repo.js';
+export { AutomationScheduleRepository } from './repositories/automation-schedule.repo.js';
 
 // Orchestration repositories
 export { AgentRepository } from './repositories/agent.repo.js';

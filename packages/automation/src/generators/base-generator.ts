@@ -1,10 +1,13 @@
-import type { Pattern, Automation, AutomationType } from '@ail/common';
+import type { Pattern, Automation, AutomationType, ExecutionTier, TemplateParam, RuleConfig } from '@ail/common';
 
 export interface GeneratedAutomation {
   type: AutomationType;
   name: string;
   description: string;
   scriptContent: string;
+  executionTier?: ExecutionTier;
+  templateParams?: TemplateParam[];
+  ruleConfig?: RuleConfig;
 }
 
 export abstract class AutomationGenerator {

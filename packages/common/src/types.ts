@@ -172,9 +172,17 @@ export interface Suggestion {
 
 // ---- Automation ----
 
-export type AutomationType = 'applescript' | 'playwright' | 'n8n' | 'api_stub';
+export type AutomationType = 'applescript' | 'playwright' | 'n8n' | 'api_stub' | 'shell' | 'python' | 'template' | 'rule_engine';
 export type AutomationStatus = 'draft' | 'ready' | 'active' | 'disabled';
 export type RiskLevel = 'safe' | 'moderate' | 'risky';
+export type ExecutionTier = 1 | 2 | 3 | 4; // 1=hardcoded, 2=parameterized, 3=rule_engine, 4=agentic
+
+export const TIER_LABELS: Record<ExecutionTier, string> = {
+  1: 'Hardcoded',
+  2: 'Template',
+  3: 'Rules',
+  4: 'Agentic',
+};
 
 export interface Automation {
   id?: number;
@@ -186,8 +194,59 @@ export interface Automation {
   status: AutomationStatus;
   confidence: number;
   riskLevel: RiskLevel;
+  executionTier: ExecutionTier;
+  templateParams: string | null;
+  ruleConfig: string | null;
   createdAt?: number;
   updatedAt?: number;
+}
+
+// ---- Execution Strategy Types ----
+
+export interface TemplateParam {
+  name: string;
+  type: 'date' | 'env' | 'file' | 'config' | 'custom';
+  resolver: string;
+  defaultValue?: string;
+}
+
+export interface RuleCondition {
+  field: string;
+  operator: 'eq' | 'gt' | 'lt' | 'gte' | 'lte' | 'contains' | 'matches';
+  value: unknown;
+}
+
+export interface RuleAction {
+  type: 'execute_automation' | 'run_script' | 'notify' | 'skip';
+  config: Record<string, unknown>;
+}
+
+export interface Rule {
+  conditions: RuleCondition[];
+  action: RuleAction;
+  priority: number;
+}
+
+export interface RuleConfig {
+  rules: Rule[];
+  defaultAction: RuleAction;
+}
+
+export interface TierClassification {
+  tier: ExecutionTier;
+  confidence: number;
+  reasoning: string;
+  suggestedType: AutomationType;
+}
+
+export interface AutomationSchedule {
+  id?: number;
+  automationId: number;
+  cronExpression: string;
+  enabled: boolean;
+  lastRunAt: number | null;
+  nextRunAt: number | null;
+  createdAt?: number;
 }
 
 export interface AutomationExecution {

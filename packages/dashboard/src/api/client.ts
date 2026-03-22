@@ -48,6 +48,9 @@ export interface Automation {
   status: string;
   confidence: number;
   riskLevel: string;
+  executionTier: number;
+  templateParams: string | null;
+  ruleConfig: string | null;
   createdAt: number;
 }
 
@@ -221,6 +224,12 @@ export const api = {
   updateAutomation: (id: number, fields: Record<string, unknown>) =>
     fetchJson(`/automations/${id}`, { method: 'PATCH', body: JSON.stringify(fields) }),
   deleteAutomation: (id: number) => fetchJson(`/automations/${id}`, { method: 'DELETE' }),
+  classifyPattern: (patternId: number) => fetchJson(`/automations/classify/${patternId}`, { method: 'POST' }),
+  getTierStats: () => fetchJson('/automations/stats/tiers'),
+  getSchedule: (automationId: number) => fetchJson(`/automations/${automationId}/schedule`),
+  setSchedule: (automationId: number, cronExpression: string, enabled = true) =>
+    fetchJson(`/automations/${automationId}/schedule`, { method: 'POST', body: JSON.stringify({ cronExpression, enabled }) }),
+  deleteSchedule: (automationId: number) => fetchJson(`/automations/${automationId}/schedule`, { method: 'DELETE' }),
 
   // Agents
   getAgents: () => fetchJson<Agent[]>('/agents'),
