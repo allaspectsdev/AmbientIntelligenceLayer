@@ -3,134 +3,93 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 
 export function SettingsPage() {
-  const queryClient = useQueryClient()
-  const [newExclusion, setNewExclusion] = useState({ type: 'app', pattern: '' })
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null)
-
-  const { data: exclusions } = useQuery({
-    queryKey: ['exclusions'],
-    queryFn: () => api.getExclusions(),
-  })
-
-  const addExclusion = useMutation({
-    mutationFn: () => api.addExclusion(newExclusion.type, newExclusion.pattern),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['exclusions'] })
-      setNewExclusion(prev => ({ ...prev, pattern: '' }))
-    },
-  })
-
-  const removeExclusion = useMutation({
-    mutationFn: (id: number) => api.removeExclusion(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exclusions'] }),
-  })
-
-  const triggerAnalysis = useMutation({
+  const qc = useQueryClient()
+  const [exc, setExc] = useState({ type: 'app', pattern: '' })
+  const [result, setResult] = useState<string | null>(null)
+  const { data: exclusions } = useQuery({ queryKey: ['exclusions'], queryFn: () => api.getExclusions() })
+  const { data: credentials } = useQuery({ queryKey: ['credentials'], queryFn: () => api.getCredentials() })
+  const addExc = useMutation({ mutationFn: () => api.addExclusion(exc.type, exc.pattern), onSuccess: () => { qc.invalidateQueries({ queryKey: ['exclusions'] }); setExc(p => ({ ...p, pattern: '' })) } })
+  const rmExc = useMutation({ mutationFn: (id: number) => api.removeExclusion(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['exclusions'] }) })
+  const rmCred = useMutation({ mutationFn: (id: number) => api.deleteCredential(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['credentials'] }) })
+  const analyze = useMutation({
     mutationFn: () => api.triggerAnalysis(),
-    onSuccess: (data) => {
-      setAnalysisResult(`Found ${data.patternsFound} patterns, generated ${data.suggestionsGenerated} suggestions`)
-      queryClient.invalidateQueries({ queryKey: ['patterns'] })
-      queryClient.invalidateQueries({ queryKey: ['suggestions'] })
-    },
-    onError: (err) => setAnalysisResult(`Error: ${(err as Error).message}`),
+    onSuccess: (d) => { setResult(`${d.patternsFound} patterns, ${d.suggestionsGenerated} suggestions`); qc.invalidateQueries({ queryKey: ['patterns'] }); qc.invalidateQueries({ queryKey: ['suggestions'] }) },
+    onError: (e) => setResult(`Error: ${(e as Error).message}`),
   })
-
-  const { data: health } = useQuery({
-    queryKey: ['health'],
-    queryFn: () => api.health(),
-    retry: false,
-  })
+  const { data: health } = useQuery({ queryKey: ['health'], queryFn: () => api.health(), retry: false })
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h2 className="text-xl font-semibold">Settings</h2>
+      <h2 className="font-display text-3xl animate-in" style={{ '--delay': 0 } as React.CSSProperties}>Settings</h2>
 
-      <Section title="System Status">
+      <Sec title="System Status" delay={1}>
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${health ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-sm">API Server: {health ? 'Connected' : 'Disconnected'}</span>
+          <span className={`w-2 h-2 rounded-full ${health ? 'status-pulse' : ''}`} style={{ background: health ? 'var(--color-success)' : 'var(--color-danger)' }} />
+          <span className="text-sm font-mono">{health ? 'Connected' : 'Disconnected'}</span>
         </div>
-      </Section>
+      </Sec>
 
-      <Section title="Analysis">
-        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
-          Trigger pattern detection and AI coaching analysis manually.
-        </p>
-        <button onClick={() => triggerAnalysis.mutate()}
-          disabled={triggerAnalysis.isPending}
-          className="px-4 py-2 rounded text-sm font-medium transition-colors"
-          style={{ background: 'var(--color-primary)', color: '#fff' }}>
-          {triggerAnalysis.isPending ? 'Analyzing...' : 'Run Analysis Now'}
+      <Sec title="Analysis" delay={2}>
+        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Trigger pattern detection and AI coaching analysis.</p>
+        <button onClick={() => analyze.mutate()} disabled={analyze.isPending} className="btn-primary px-4 py-2 text-sm">
+          {analyze.isPending ? 'Analyzing...' : 'Run Analysis Now'}
         </button>
-        {analysisResult && (
-          <p className="text-xs mt-2" style={{ color: 'var(--color-primary-light)' }}>{analysisResult}</p>
-        )}
-      </Section>
+        {result && <p className="text-xs font-mono mt-2" style={{ color: 'var(--color-primary-light)' }}>{result}</p>}
+      </Sec>
 
-      <Section title="Privacy Exclusions">
-        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
-          Excluded apps and patterns are never recorded. Changes take effect on next capture service restart.
-        </p>
+      <Sec title="Privacy Exclusions" delay={3}>
+        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Excluded apps and patterns are never recorded.</p>
         <div className="flex gap-2 mb-4">
-          <select value={newExclusion.type}
-            onChange={e => setNewExclusion(prev => ({ ...prev, type: e.target.value }))}
-            className="rounded px-3 py-1.5 text-sm border"
-            style={{ background: 'var(--color-surface-alt)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+          <select value={exc.type} onChange={e => setExc(p => ({ ...p, type: e.target.value }))} className="input-glass px-3 py-2 text-sm">
             <option value="app">App Name</option>
             <option value="title_regex">Title Regex</option>
             <option value="url_regex">URL Regex</option>
+            <option value="path_regex">Path Regex</option>
           </select>
-          <input type="text"
-            placeholder={newExclusion.type === 'app' ? 'e.g., 1Password' : 'e.g., .*private.*'}
-            value={newExclusion.pattern}
-            onChange={e => setNewExclusion(prev => ({ ...prev, pattern: e.target.value }))}
-            className="flex-1 rounded px-3 py-1.5 text-sm border"
-            style={{ background: 'var(--color-surface-alt)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }} />
-          <button onClick={() => newExclusion.pattern && addExclusion.mutate()}
-            className="px-3 py-1.5 rounded text-sm font-medium"
-            style={{ background: 'var(--color-primary)', color: '#fff' }}>
-            Add
-          </button>
+          <input type="text" placeholder="e.g., 1Password" value={exc.pattern}
+            onChange={e => setExc(p => ({ ...p, pattern: e.target.value }))}
+            className="flex-1 input-glass px-3 py-2 text-sm" />
+          <button onClick={() => exc.pattern && addExc.mutate()} className="btn-primary px-3 py-2 text-sm">Add</button>
         </div>
-        {exclusions && exclusions.length > 0 ? (
-          <div className="space-y-2">
-            {exclusions.map(rule => (
-              <div key={rule.id} className="flex items-center justify-between px-3 py-2 rounded border"
-                style={{ background: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}>
-                <div>
-                  <span className="text-[10px] font-medium uppercase mr-2" style={{ color: 'var(--color-primary-light)' }}>
-                    {rule.type}
-                  </span>
-                  <span className="text-sm">{rule.pattern}</span>
-                </div>
-                <button onClick={() => removeExclusion.mutate(rule.id)}
-                  className="text-xs px-2 py-1 rounded" style={{ color: '#f43f5e' }}>
-                  Remove
-                </button>
-              </div>
-            ))}
+        {exclusions?.map(r => (
+          <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-lg mb-2" style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)' }}>
+            <div className="flex items-center gap-2">
+              <span className="badge" style={{ background: 'rgba(14,165,233,0.1)', color: 'var(--color-primary)' }}>{r.type}</span>
+              <span className="text-sm font-mono">{r.pattern}</span>
+            </div>
+            <button onClick={() => rmExc.mutate(r.id)} className="text-xs font-mono" style={{ color: 'var(--color-danger)' }}>Remove</button>
           </div>
-        ) : (
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>No exclusion rules configured.</p>
-        )}
-      </Section>
+        ))}
+      </Sec>
 
-      <Section title="About">
-        <div className="text-xs space-y-1" style={{ color: 'var(--color-text-muted)' }}>
-          <p>Ambient Intelligence Layer v0.1.0 (MVP)</p>
-          <p>All data is stored locally on this device.</p>
-          <p>Data directory: ./data</p>
+      <Sec title="Credentials" delay={4}>
+        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Encrypted credentials for agent automations.</p>
+        {credentials?.map(c => (
+          <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-lg mb-2" style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{c.name}</span>
+              {c.service && <span className="text-[10px] font-mono" style={{ color: 'var(--color-text-dim)' }}>{c.service}</span>}
+            </div>
+            <button onClick={() => rmCred.mutate(c.id)} className="text-xs font-mono" style={{ color: 'var(--color-danger)' }}>Delete</button>
+          </div>
+        ))}
+        {(!credentials || credentials.length === 0) && <p className="text-xs font-mono" style={{ color: 'var(--color-text-dim)' }}>No credentials stored.</p>}
+      </Sec>
+
+      <Sec title="About" delay={5}>
+        <div className="text-xs font-mono space-y-1" style={{ color: 'var(--color-text-dim)' }}>
+          <p>Ambient Intelligence Layer v0.2.0</p>
+          <p>All data stored locally. AES-256-GCM encrypted credentials.</p>
         </div>
-      </Section>
+      </Sec>
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Sec({ title, delay, children }: { title: string; delay: number; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg p-5 border"
-      style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-      <h3 className="text-sm font-medium mb-3">{title}</h3>
+    <div className="glass p-5 animate-in" style={{ '--delay': delay } as React.CSSProperties}>
+      <h3 className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-dim)' }}>{title}</h3>
       {children}
     </div>
   )
