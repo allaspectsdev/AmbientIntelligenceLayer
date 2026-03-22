@@ -1,0 +1,11 @@
+{
+  "name": "@ail/capture",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "get-windows": "^9.3.0",
+    "screenshot-desktop": "^1.15.0"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "ambient-intelligence-layer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/common",
+    "packages/storage",
+    "packages/capture",
+    "packages/analysis",
+    "packages/api",
+    "packages/dashboard"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:capture": "tsx packages/capture/src/index.ts",
+    "dev:api": "tsx packages/api/src/index.ts",
+    "dev:analysis": "tsx packages/analysis/src/index.ts",
+    "dev:dashboard": "npm run dev --workspace=packages/dashboard",
+    "dev": "concurrently -n capture,api,analysis,dashboard -c blue,green,yellow,magenta \"npm:dev:capture\" \"npm:dev:api\" \"npm:dev:analysis\" \"npm:dev:dashboard\"",
+    "start": "tsx scripts/start-all.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
