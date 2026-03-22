@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { ScreenshotRepository } from '@ail/storage';
 import { DEFAULT_CAPTURE_CONFIG } from '@ail/common';
@@ -29,6 +29,11 @@ export async function screenshotRoutes(app: FastifyInstance) {
 
     const dataDir = DEFAULT_CAPTURE_CONFIG.dataDir;
     const fullPath = join(dataDir, screenshot.filePath);
+
+    // Prevent path traversal
+    if (!resolve(fullPath).startsWith(resolve(dataDir))) {
+      return reply.status(400).send({ error: 'Invalid path' });
+    }
 
     if (!existsSync(fullPath)) {
       return reply.status(404).send({ error: 'Screenshot file not found' });

@@ -63,6 +63,12 @@ export class AgentManager {
                 completedAt: Date.now(),
                 error: result.error,
               });
+            } else {
+              // No automation found — fail the task to prevent zombie state
+              this.taskRepo.updateStatus(task.id!, 'failed', {
+                completedAt: Date.now(),
+                error: `No automation found (automationId: ${task.automationId})`,
+              });
 
               this.auditLogger.log('agent', 'task_executed', 'agent_task', String(task.id),
                 { automationId: automation.id, status: result.status },

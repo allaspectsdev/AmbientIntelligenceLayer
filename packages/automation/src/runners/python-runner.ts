@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -17,11 +17,15 @@ export class PythonRunner implements AutomationRunner {
     try {
       writeFileSync(tmpFile, automation.scriptContent || 'print("empty script")');
 
-      const args = context?.params
-        ? Object.entries(context.params).map(([k, v]) => `--${k.replace(/_/g, '-')} "${v}"`).join(' ')
-        : '';
+      // Build args as array — prevents shell injection
+      const args: string[] = [tmpFile];
+      if (context?.params) {
+        for (const [k, v] of Object.entries(context.params)) {
+          args.push(`--${k.replace(/_/g, '-')}`, v);
+        }
+      }
 
-      const output = execSync(`python3 "${tmpFile}" ${args}`, {
+      const output = execFileSync('python3', args, {
         encoding: 'utf-8',
         timeout: 60_000,
         env: { ...process.env, ...(context?.env) },

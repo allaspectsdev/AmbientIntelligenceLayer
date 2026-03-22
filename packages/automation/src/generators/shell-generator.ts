@@ -1,6 +1,11 @@
 import type { Pattern, AppSequenceData, TabSwitchData } from '@ail/common';
 import { AutomationGenerator, type GeneratedAutomation } from './base-generator.js';
 
+/** Sanitize a value for safe embedding in shell scripts */
+function sanitize(value: string): string {
+  return value.replace(/[^a-zA-Z0-9 ._\-()]/g, '');
+}
+
 /**
  * Generates deterministic bash scripts for Tier 1 patterns.
  * Zero LLM tokens at runtime. Script either works or throws an error.
@@ -43,11 +48,12 @@ export class ShellScriptGenerator extends AutomationGenerator {
     ];
 
     for (const app of data.apps) {
-      lines.push(`open -a "${app}"`);
+      lines.push(`open -a "${sanitize(app)}"`);
       lines.push('sleep 0.5');
     }
 
-    lines.push('', 'echo "Launched: ' + data.apps.join(', ') + '"');
+    lines.push('', `echo "Launched: ${data.apps.map(sanitize).join(', ')}"`);
+
 
     return {
       type: 'shell',

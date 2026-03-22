@@ -52,6 +52,8 @@ export function detectAppSequences(
           firstSeen: events[0].timestamp,
           lastSeen: now,
           isActive: true,
+        confidence: 0.5,
+        riskLevel: 'safe' as const,
         });
       }
     }

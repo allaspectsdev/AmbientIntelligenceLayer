@@ -1,14 +1,43 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 import { hostname, userInfo } from 'node:os';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
+
+let _cachedKey: Buffer | null = null;
+
+function getSaltPath(): string {
+  const dataDir = process.env.DATA_DIR || './data';
+  return join(dataDir, '.crypto-salt');
+}
+
+function getOrCreateSalt(): string {
+  const saltPath = getSaltPath();
+  try {
+    if (existsSync(saltPath)) {
+      return readFileSync(saltPath, 'utf-8').trim();
+    }
+  } catch { /* will create new */ }
+
+  // Generate random salt on first use
+  const salt = randomBytes(32).toString('hex');
+  try {
+    mkdirSync(dirname(saltPath), { recursive: true });
+    writeFileSync(saltPath, salt, { mode: 0o600 }); // Owner-only permissions
+  } catch {
+    console.warn('[Crypto] Could not persist salt — using ephemeral salt');
+  }
+  return salt;
+}
 
 function deriveKey(): Buffer {
-  // Machine-specific seed: hostname + username
-  const seed = `${hostname()}-${userInfo().username}-ail-secret`;
-  return scryptSync(seed, 'ail-salt-v1', 32);
+  if (_cachedKey) return _cachedKey;
+  const seed = `${hostname()}-${userInfo().username}-ail`;
+  const salt = getOrCreateSalt();
+  _cachedKey = scryptSync(seed, salt, 32);
+  return _cachedKey;
 }
 
 export function encrypt(plaintext: string): string {
@@ -20,7 +49,6 @@ export function encrypt(plaintext: string): string {
   encrypted += cipher.final('base64');
   const tag = cipher.getAuthTag();
 
-  // Format: iv:tag:ciphertext (all base64)
   return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted}`;
 }
 

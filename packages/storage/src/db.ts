@@ -37,9 +37,13 @@ function runMigrations(db: Database.Database): void {
   `);
 
   const migrationsDir = join(__dirname, 'migrations');
-  const files = readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort();
+  let files: string[];
+  try {
+    files = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+  } catch (err) {
+    console.warn(`[DB] Migrations directory not found: ${migrationsDir}`);
+    return;
+  }
 
   for (const file of files) {
     const applied = db

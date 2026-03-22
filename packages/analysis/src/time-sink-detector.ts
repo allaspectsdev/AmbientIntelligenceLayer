@@ -40,6 +40,8 @@ export function detectTimeSinks(
         firstSeen: events[0]?.timestamp || now,
         lastSeen: now,
         isActive: true,
+        confidence: 0.5,
+        riskLevel: 'safe' as const,
       });
     }
   }

@@ -98,6 +98,27 @@ function computeNextRun(cronExpression: string, fromMs: number): number {
     return next.getTime();
   }
 
-  // Default: 1 hour from now
+  // Weekday schedule: M H * * 1-5
+  if (!isNaN(minute) && !isNaN(hour) && parts[4] === '1-5') {
+    const next = new Date(fromMs);
+    next.setHours(hour, minute, 0, 0);
+    if (next.getTime() <= fromMs) next.setDate(next.getDate() + 1);
+    // Skip to next weekday
+    while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
+    return next.getTime();
+  }
+
+  // Monthly: M H D * *
+  const dom = parseInt(parts[2], 10);
+  if (!isNaN(minute) && !isNaN(hour) && !isNaN(dom)) {
+    const next = new Date(fromMs);
+    next.setDate(dom);
+    next.setHours(hour, minute, 0, 0);
+    if (next.getTime() <= fromMs) next.setMonth(next.getMonth() + 1);
+    return next.getTime();
+  }
+
+  // Unsupported expression — log warning and default to 1 hour
+  console.warn(`[Scheduler] Unsupported cron expression "${cronExpression}" — defaulting to 1 hour interval`);
   return fromMs + 60 * 60_000;
 }

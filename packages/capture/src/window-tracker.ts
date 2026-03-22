@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import type { WindowInfo, CaptureConfig, ExclusionRule } from '@ail/common';
 import { shouldExclude } from '@ail/common';
 import type { ActivityWriter } from './activity-writer.js';
@@ -43,7 +43,7 @@ async function getActiveWindow(): Promise<WindowInfo | null> {
         return appName & "|||" & winTitle & "|||" & bundleId
       end tell
     `;
-    const result = execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
+    const result = execFileSync('osascript', ['-e', script], {
       encoding: 'utf-8',
       timeout: 3000,
     }).trim();

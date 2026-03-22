@@ -8,20 +8,23 @@ interface WsMessage {
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null)
+  const mountedRef = useRef(true)
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<WsMessage[]>([])
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const connect = useCallback(() => {
+    if (!mountedRef.current) return
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const ws = new WebSocket(`${protocol}//${window.location.host}/api/ws`)
 
     ws.onopen = () => {
-      setIsConnected(true)
-      console.log('[WS] Connected')
+      if (mountedRef.current) setIsConnected(true)
     }
 
     ws.onmessage = (event) => {
+      if (!mountedRef.current) return
       try {
         const msg = JSON.parse(event.data) as WsMessage
         if (msg.type === 'pong') return
@@ -30,8 +33,8 @@ export function useWebSocket() {
     }
 
     ws.onclose = () => {
+      if (!mountedRef.current) return
       setIsConnected(false)
-      // Reconnect after 3s
       reconnectTimer.current = setTimeout(connect, 3000)
     }
 
@@ -41,8 +44,10 @@ export function useWebSocket() {
   }, [])
 
   useEffect(() => {
+    mountedRef.current = true
     connect()
     return () => {
+      mountedRef.current = false
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
       wsRef.current?.close()
     }

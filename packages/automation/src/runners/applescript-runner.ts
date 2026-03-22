@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 export interface RunResult {
   success: boolean;
@@ -8,7 +8,8 @@ export interface RunResult {
 
 export function runAppleScript(script: string, timeout: number = 30_000): RunResult {
   try {
-    const output = execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
+    // Use execFileSync to bypass shell interpretation entirely — prevents command injection
+    const output = execFileSync('osascript', ['-e', script], {
       encoding: 'utf-8',
       timeout,
     }).trim();

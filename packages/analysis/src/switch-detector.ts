@@ -56,6 +56,8 @@ export function detectTabSwitching(
           firstSeen: events[windowStart].timestamp,
           lastSeen: now,
           isActive: true,
+        confidence: 0.5,
+        riskLevel: 'safe' as const,
         });
       }
     }

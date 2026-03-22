@@ -187,7 +187,13 @@ export async function automationRoutes(app: FastifyInstance) {
 
   app.patch('/api/automations/:id', async (req) => {
     const { id } = req.params as { id: string };
-    autoRepo.update(Number(id), req.body as Record<string, unknown>);
+    const body = req.body as Record<string, unknown>;
+    // Whitelist: only allow safe fields to be updated externally
+    const allowed: Record<string, unknown> = {};
+    for (const key of ['name', 'description', 'status', 'scriptContent'] as const) {
+      if (body[key] !== undefined) allowed[key] = body[key];
+    }
+    autoRepo.update(Number(id), allowed);
     return { success: true };
   });
 
