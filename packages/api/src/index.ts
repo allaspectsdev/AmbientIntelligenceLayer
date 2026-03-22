@@ -10,6 +10,13 @@ import { patternRoutes } from './routes/patterns.routes.js';
 import { suggestionRoutes } from './routes/suggestions.routes.js';
 import { configRoutes } from './routes/config.routes.js';
 import { analyzeRoutes } from './routes/analyze.routes.js';
+import { captureRoutes } from './routes/capture.routes.js';
+import { automationRoutes } from './routes/automations.routes.js';
+import { agentRoutes } from './routes/agents.routes.js';
+import { approvalRoutes } from './routes/approvals.routes.js';
+import { auditRoutes } from './routes/audit.routes.js';
+import { credentialRoutes } from './routes/credentials.routes.js';
+import { setupWebSocket } from './ws.js';
 
 // Extend Fastify with our db instance
 declare module 'fastify' {
@@ -31,6 +38,9 @@ async function main() {
   const db = getDatabase('./data');
   app.decorate('db', db);
 
+  // WebSocket support
+  await setupWebSocket(app);
+
   // Register routes
   await app.register(activityRoutes);
   await app.register(screenshotRoutes);
@@ -38,6 +48,12 @@ async function main() {
   await app.register(suggestionRoutes);
   await app.register(configRoutes);
   await app.register(analyzeRoutes);
+  await app.register(captureRoutes);
+  await app.register(automationRoutes);
+  await app.register(agentRoutes);
+  await app.register(approvalRoutes);
+  await app.register(auditRoutes);
+  await app.register(credentialRoutes);
 
   // Health check
   app.get('/api/health', async () => ({ status: 'ok', timestamp: Date.now() }));

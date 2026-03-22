@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -37,17 +37,21 @@ function runMigrations(db: Database.Database): void {
   `);
 
   const migrationsDir = join(__dirname, 'migrations');
-  const migrationFile = '001_initial.sql';
+  const files = readdirSync(migrationsDir)
+    .filter(f => f.endsWith('.sql'))
+    .sort();
 
-  const applied = db
-    .prepare('SELECT name FROM _migrations WHERE name = ?')
-    .get(migrationFile) as { name: string } | undefined;
+  for (const file of files) {
+    const applied = db
+      .prepare('SELECT name FROM _migrations WHERE name = ?')
+      .get(file) as { name: string } | undefined;
 
-  if (!applied) {
-    const sql = readFileSync(join(migrationsDir, migrationFile), 'utf-8');
-    db.exec(sql);
-    db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(migrationFile);
-    console.log(`Applied migration: ${migrationFile}`);
+    if (!applied) {
+      const sql = readFileSync(join(migrationsDir, file), 'utf-8');
+      db.exec(sql);
+      db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
+      console.log(`Applied migration: ${file}`);
+    }
   }
 }
 

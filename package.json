@@ -8,6 +8,8 @@
     "packages/storage",
     "packages/capture",
     "packages/analysis",
+    "packages/automation",
+    "packages/orchestration",
     "packages/api",
     "packages/dashboard"
   ],

@@ -34,6 +34,75 @@ export interface Pattern {
   firstSeen: number;
   lastSeen: number;
   isActive: boolean;
+  confidence?: number;
+  riskLevel?: string;
+}
+
+export interface Automation {
+  id: number;
+  patternId: number | null;
+  type: string;
+  name: string;
+  description: string | null;
+  scriptContent: string | null;
+  status: string;
+  confidence: number;
+  riskLevel: string;
+  createdAt: number;
+}
+
+export interface AutomationExecution {
+  id: number;
+  automationId: number;
+  startedAt: number;
+  completedAt: number | null;
+  status: string;
+  output: string | null;
+  error: string | null;
+}
+
+export interface Agent {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  createdAt: number;
+}
+
+export interface AgentTask {
+  id: number;
+  agentId: number;
+  automationId: number | null;
+  status: string;
+  priority: number;
+}
+
+export interface Approval {
+  id: number;
+  agentTaskId: number | null;
+  automationId: number | null;
+  actionType: string;
+  status: string;
+  requestedAt: number;
+  decidedAt: number | null;
+}
+
+export interface AuditEntry {
+  id: number;
+  timestamp: number;
+  actor: string;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  detailsJson: string | null;
+  riskLevel: string;
+}
+
+export interface Credential {
+  id: number;
+  name: string;
+  service: string | null;
+  scope: string | null;
 }
 
 export interface Suggestion {
@@ -130,4 +199,60 @@ export const api = {
     }),
 
   health: () => fetchJson<{ status: string }>('/health'),
+
+  // Automations
+  getAutomations: (filters?: { status?: string; type?: string }) => {
+    const p = new URLSearchParams();
+    if (filters?.status) p.set('status', filters.status);
+    if (filters?.type) p.set('type', filters.type);
+    return fetchJson<Automation[]>(`/automations?${p}`);
+  },
+  getAutomation: (id: number) => fetchJson<Automation>(`/automations/${id}`),
+  generateAutomation: (patternId: number) =>
+    fetchJson<Automation>(`/automations/generate/${patternId}`, { method: 'POST' }),
+  executeAutomation: (id: number) =>
+    fetchJson<AutomationExecution>(`/automations/${id}/execute`, { method: 'POST' }),
+  dryRunAutomation: (id: number) =>
+    fetchJson<{ preview: string }>(`/automations/${id}/dry-run`, { method: 'POST' }),
+  exportAutomation: (id: number, format: string) =>
+    fetchJson<{ content: string; filename: string }>(`/automations/${id}/export/${format}`),
+  getExecutions: (automationId: number) =>
+    fetchJson<AutomationExecution[]>(`/automations/${automationId}/executions`),
+  updateAutomation: (id: number, fields: Record<string, unknown>) =>
+    fetchJson(`/automations/${id}`, { method: 'PATCH', body: JSON.stringify(fields) }),
+  deleteAutomation: (id: number) => fetchJson(`/automations/${id}`, { method: 'DELETE' }),
+
+  // Agents
+  getAgents: () => fetchJson<Agent[]>('/agents'),
+  createAgent: (name: string, type: string) =>
+    fetchJson<{ id: number }>('/agents', { method: 'POST', body: JSON.stringify({ name, type }) }),
+  startAgent: (id: number) => fetchJson(`/agents/${id}/start`, { method: 'POST' }),
+  stopAgent: (id: number) => fetchJson(`/agents/${id}/stop`, { method: 'POST' }),
+  deleteAgent: (id: number) => fetchJson(`/agents/${id}`, { method: 'DELETE' }),
+  getAgentTasks: (agentId: number) => fetchJson<AgentTask[]>(`/agents/${agentId}/tasks`),
+  enqueueTask: (agentId: number, automationId: number, priority?: number) =>
+    fetchJson(`/agents/${agentId}/tasks`, { method: 'POST', body: JSON.stringify({ automationId, priority }) }),
+
+  // Approvals
+  getApprovals: () => fetchJson<Approval[]>('/approvals'),
+  approveRequest: (id: number) => fetchJson(`/approvals/${id}/approve`, { method: 'POST' }),
+  denyRequest: (id: number) => fetchJson(`/approvals/${id}/deny`, { method: 'POST' }),
+
+  // Audit
+  getAuditLog: (filters?: { actor?: string; riskLevel?: string; limit?: number }) => {
+    const p = new URLSearchParams();
+    if (filters?.actor) p.set('actor', filters.actor);
+    if (filters?.riskLevel) p.set('riskLevel', filters.riskLevel);
+    if (filters?.limit) p.set('limit', String(filters.limit));
+    return fetchJson<AuditEntry[]>(`/audit?${p}`);
+  },
+
+  // Credentials
+  getCredentials: () => fetchJson<Credential[]>('/credentials'),
+  addCredential: (name: string, service: string, value: string, scope?: string) =>
+    fetchJson<{ id: number }>('/credentials', { method: 'POST', body: JSON.stringify({ name, service, value, scope }) }),
+  deleteCredential: (id: number) => fetchJson(`/credentials/${id}`, { method: 'DELETE' }),
+
+  // Vision
+  triggerVisionAnalysis: () => fetchJson<{ analyzed: number }>('/vision/analyze', { method: 'POST' }),
 };

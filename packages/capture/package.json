@@ -6,6 +6,8 @@
   "main": "./src/index.ts",
   "dependencies": {
     "get-windows": "^9.3.0",
-    "screenshot-desktop": "^1.15.0"
+    "screenshot-desktop": "^1.15.0",
+    "clipboardy": "^4.0.0",
+    "chokidar": "^4.0.0"
   }
 }
